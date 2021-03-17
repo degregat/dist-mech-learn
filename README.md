@@ -55,7 +55,7 @@ We use Googles implementations of [discrete gaussian noise](https://github.com/g
 ## Roadmap
 ### Mechanism Leaner
 - [x] Implement prototype of [Prior-Free Auction Learner](https://github.com/degregat/deep-opt-auctions)
-- [ ] Analysis of prototype, regarding approximate IC
+- [ ] Analysis of prototype, regarding approximate IC (manuscript in submission)
 - [ ] Analysis of prototype in privacy aware setting
 - [ ] Port mechanism learner to finished backend
 
