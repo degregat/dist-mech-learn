@@ -54,13 +54,12 @@ We use Googles implementations of [discrete gaussian noise](https://github.com/g
 
 ## Roadmap
 ### Mechanism Leaner
-- [x] Implement prototype of [Prior-Free Auction Learner](https://github.com/degregat/deep-opt-auctions)
+- [x] Implement prototype of [Prior-Free Auction Learner](https://github.com/degregat/one-shot-approx-auctions)
 - [x] Analysis of prototype, regarding approximate IC ([arXiv](https://arxiv.org/abs/2104.00159))
-- [ ] Analysis of prototype in privacy aware setting
 - [ ] Port mechanism learner to finished backend
 
 ### Backend
 - [x] Implement integer support for libprio
 - [x] Implement fixed-point support for libprio
-- [ ] Implement secure distributed noise generator with secure aggregation
+- [x] Implement secure distributed noise generator with secure aggregation ([code](https://github.com/degregat/prio-dp))
 - [ ] Integrate distributed noise generator with federated learning framework
