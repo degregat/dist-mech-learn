@@ -55,8 +55,10 @@ We use Googles implementations of [discrete gaussian noise](https://github.com/g
 ## Roadmap
 ### Mechanism Leaner
 - [x] Implement prototype of [Prior-Free Auction Learner](https://github.com/degregat/one-shot-approx-auctions)
-- [x] Analysis of prototype, regarding approximate IC ([arXiv](https://arxiv.org/abs/2104.00159))
-- [ ] Port mechanism learner to finished backend
+- [x] Analysis of prototype, regarding approximate IC ([arXiv](https://arxiv.org/abs/2104.00159)) ([ICLR DPML Workshop](https://dp-ml.github.io/2021-workshop-ICLR/files/27.pdf))
+- [x] Implement [Two-Player Auction Learning in JAX](https://github.com/degregat/two-player-auctions) for more efficient experimentation
+  - [ ] Add Differentially Private bid elicitation phase
+- [ ] Port Two-Player Auction Learner to finished backend
 
 ### Backend
 - [x] Implement integer support for libprio
