@@ -10,38 +10,44 @@ This approach is able to learn IC mechanisms from the distributions of the agent
 
 Our approach is to pretend the reports are truthful and the agents' distributions have all weight on their report, then use these "distributions" as priors for the mechanism learner. The resulting mechanism will not necessarily be IC, as agents could have lied in their reports to improve their outcome. We should be able to alleviate this by [reducing the sensitivity of the learner using differential privacy](http://kunaltalwar.org/papers/expmech.pdf), bounding the influence a report can have on the outcome of the learning process. Agents could then only achieve bounded gains by misreporting and thus would have a bounded incentive to do so. The resulting mechanism would not be IC, but approximately IC and is expected to yield better results than a lottery.
 
+### Next Step: Online Learning for the Prior-Independent Case
+If we assume some distribution of preferences exists, but we don't know it, we can use the online version of [two player auction learning](https://github.com/degregat/two-player-auctions). In this case, every set of bids is used as a learning sample, to approximate the distribution of preferences over time. Since agents can still misreport, [input perturbation](https://arxiv.org/abs/2002.08570) (a specific differential privacy setup) should be used to bound the per sample influence on the learning of the distribution. This way, we do not have to learn a single auction per bid sample, but can reuse learned information about the preference space. This is not as general as the prior-free case, but can be used for iterated use cases where agents preferences follow recurring patterns.
+
+### Long Term: Mechanism Learning with unknown preferences
+For all of the above to learn, Agents need to know their preferences. If they don't they can be provided with a [feedback mechanism](https://arxiv.org/abs/2004.08924) to learn them from mechanism outcomes.
+
 ## Privacy Aware Agents
 Since we are also interested in [preserving privacy](https://arxiv.org/pdf/1111.3350.pdf), as a next step we want to consider agents that are averse to making their preferences known to other agents or the computing infrastructure.
 
-Fortunately, the differential privacy used in the above mechanism learner also reduces the amount of information about individual reports that is being leaked from the resulting mechanism. The task here will be to quantify the report privacy the mechanism learner provides and how much value agents can afford to put on privacy while still preserving approximate IC.
+Fortunately, the differential privacy used in the above approaches also reduces the amount of information about individual reports that is being leaked from the resulting mechanism. The task here will be to quantify the report privacy the mechanism learner provides and how much value agents can afford to put on privacy while still preserving approximate IC.
 
-We also want to reduce the amount of report information leaked during the learning process. Thus, we can not perform the learning on a central server which would see the plaintext reports of all agents.
+We also want to reduce the amount of report information leaked during the bid aggregation process. Thus, we can not perform the aggregation on a central server which would see the plaintext reports of all agents.
 
 On the other hand, we are still interested in guarding against malicious clients, who will try to obtain an outsized influence on the learning process. This means we can not just distribute the computation to the clients, since they could improve their influence on the learning by not properly applying differentially private transformations.
 
-Thus we intend to build a differentially private federated learning backend. The part of the computation that requires knowledge of the reports will be performed client-side in a way that the individual influence on the learning can be verified to be bounded by using range-proofs. The other part will be distributed accross multiple servers that use secure aggregation, never having access to the plaintext reports as long as one of the servers is trustworthy.
+Thus we are building a differentially private secure aggregation backend. The part of the computation that requires knowledge of the reports will be performed client-side in a way that the individual influence on the mechanism can be verified to be bounded by using range-proofs. The rest will be distributed accross multiple servers that use secure aggregation, never having access to the plaintext reports as long as one of the servers is trustworthy.
 
 # Implementation Details
 ## Multi-Item Auction Learner
 The mechanism learner we base our work on is learning [revenue maximizing multi-item multi-bidder auctions](https://github.com/saisrivatsan/deep-opt-auctions). In this setting, N agents are bidding for M items and revenue for the auctioneer is maximized, all under the constraint that agents shall never pay more for any combination of items than it is worth to them. Reports are the bids for each item. The auction is modelled by an allocation function, determining, given a set of bids, which agents receive which items, and a payment function, determining the payments of each agent to the auctioneer. IC in this setting means that each agent can expect the best allocation and price, under the above constraints, shall happen with the highest likelihood if their bid for each item is exactly what that item is worth to them.
 
-We modify the learner as described above to make it applicable in the prior-free setting, using use [differentially private learning](https://github.com/tensorflow/privacy). Our fork can be found [here](https://github.com/degregat/deep-opt-auctions/). The techniques we develop should be transferable to other classes of mechanisms, e.g. welfare maximizing auctions, trust and reputation systems, or facility placement.
+We modify the learners as described above to make them applicable in the prior-free and prior-independent (WIP) settings, using [differentially private learning](https://github.com/tensorflow/privacy). Our forks can be found [here](https://github.com/degregat/deep-opt-auctions/) and [here](https://github.com/degregat/two-player-auctions). The techniques we develop should be transferable to other classes of mechanisms, e.g. welfare maximizing auctions, trust and reputation systems, or facility placement.
 
 ## Distributed Learning Backend
-To ensure client privacy we need to distribute the learning process,  while keeping in mind potential data leakage as well as proper execution of the DP learner.
+To achieve bid aggregation which is private and robust against misreporting, as well as guarantee the correct execution of the learning process, we need to do the following: 
 
-In [Federated Learning](https://github.com/tensorflow/federated), a central server holds a global model, in our case, a pair of functions describing an auction. Each client receives a copy of the global model, derives model updates ([in gradient form](https://en.wikipedia.org/wiki/Gradient_descent)) for it from their reports, and sends the updates back to the server. The server aggregates these updates into the global model to improve it. This process is repeated until the model is sufficiently IC. To make it [differentially private](https://github.com/tensorflow/federated/blob/master/docs/tff_for_research.md#differential-privacy), the gradient updates are clipped (their maximum norm bounded) and noised.
+#### Ensure correct bid clipping with Secret Shared Non-Interactive Proofs (SNIPs)
+We want to make sure the values clients submit lie within a certain range, but since the servers only receive secret shares, they can not directly check this. With SNIPs, clients can compute a cryptographic range proof and send a share of it along with a share of their submitted inputs, to prove to each server that the inputs are within the permissible range.
 
-If we want to keep the server from knowing the plaintext submissions, we have to adress three problems:  how to ensure the noising was done properly, how to compute the model update without knowing the plaintext gradients, and how to ensure the clipping was done properly.
+#### Ensure correct noise generation by distributing it accross servers
+We cannot trust the users with adding noise, since they lose influence in noisier settings, and we need to keep the servers knowledge about the noise limited to prevent inference of submissions. The relief is secure aggregation, a technique based on [secret sharing](https://mortendahl.github.io/2017/06/04/secret-sharing-part1/). We use two aggregation servers for an arbitrary number of clients. Each server generates a part of the noise, scales it and adds it to the submission shares. This way, no server knows all the noise contained in the reconstructed sum. The servers are assumed to be honest-but-curious.
 
-#### Ensuring correct noise generation by distributing it accross servers
-We cannot trust the users with adding noise, and we need to keep the servers knowledge about the noise limited to prevent inference of gradients. The relief is secure aggregation, a technique based on [secret sharing](https://mortendahl.github.io/2017/06/04/secret-sharing-part1/). We use two aggregation servers for an arbitrary number of clients. Each server generates a part of the noise, splits it into two shares and sends one to the other server. The servers then add their own share and the share they received. This way, no server knows all the noise contained in the sum share.
+#### Verifiable Auction Learning
+After aggregating the bids and perturbing them, they can be used as inputs for online learning with the [two player auction learning](https://github.com/degregat/two-player-auctions). To prevent a single server from being able skew the model, we need to either robustly distribute it, or make the learning verifiable.
 
-#### Computing model updates without plaintext gradients using Secure Aggregation
-Model updates are again computed using secure aggregation. Each client splits up their gradient into two parts and sends one share to each server. The servers then sum up all the shares they received to compute a sum share. They also add the sum share of the noise obtained from the previous step. Then, the servers together use their sum shares to reconstruct the aggregated gradient. This way, no server ever sees the gradients in plaintext, only the final reconstructed sum, assuming that the servers do not collude.
-
-#### Ensuring correct gradient clipping with Secret Shared Non-Interactive Proofs (SNIPs)
-We want to make sure the values clients submit lie within a certain range, but since the servers only receive secret shares, they can not directly check this. With SNIPs, clients can compute a cryptographic range proof and send a share of it along with a share of their submitted gradients, to prove to each server that the norm of the update is correctly bounded.
+##### Open Problem: Practically Verifiable Learning
+Since in our use-case the bids are (tuneably) private after aggregation and input perturbation, we can work towards building a publicly verifiable mechanism learning process, without needing to use expensive cryptographic techniques:
+Using shared public randomness (e.g. a beacon, blockchain, etc.) and [deterministic](https://jax.readthedocs.io/en/latest/jax-101/05-random-numbers.html) machine learning frameworks, we can compute the model on a couple of servers and run a quorum to see if they come up with the same results to raise the cost of compromise.
 
 ### Building Blocks for Backend
 To implement the above secure aggregation backend with distributed noise generation and the client side SNIPs, we use the following software packages.
@@ -49,19 +55,27 @@ To implement the above secure aggregation backend with distributed noise generat
 #### Prio
 [Prio](https://github.com/mozilla/libprio/) is a cryptographic system for secure aggregation with range-proofs on the submissions. Clients are assumed to be malicious, servers to be honest-but-curious. Originally supporting aggregation of boolean vectors, we have extended it to support vectors with fixed-point (approximations of floating point numbers) entries.
 
-#### Google's differential privacy library 
+#### Google's differential privacy library
 We use Googles implementations of [discrete gaussian noise](https://github.com/google/differential-privacy) to generate the noise on the servers.
+
+### Next Step: Move Backend Prototype closer to Production Quality
+Re-implement the backend based on [libprio-rs](https://github.com/divviup/libprio-rs) and [OpenDP](https://github.com/opendp/opendp). A more flexible proof system will enable [tighter bounds](https://github.com/degregat/prio-dp#range-proofs) for the range proofs. Using a single language (rust) will make it easier to maintain.
+
 
 ## Roadmap
 ### Mechanism Leaner
 - [x] Implement prototype of [Prior-Free Auction Learner](https://github.com/degregat/one-shot-approx-auctions)
 - [x] Analysis of prototype, regarding approximate IC ([arXiv](https://arxiv.org/abs/2104.00159)) ([ICLR DPML Workshop](https://dp-ml.github.io/2021-workshop-ICLR/files/27.pdf))
-- [x] Implement [Two-Player Auction Learning in JAX](https://github.com/degregat/two-player-auctions) for more efficient experimentation
-  - [ ] Add Differentially Private bid elicitation phase
+- [x] Implement [Two-Player Auction Learning in JAX](https://github.com/degregat/two-player-auctions) for more efficient experimentation in the prior independent case
+  - [ ] Add [Sacred](https://github.com/IDSIA/sacred) support for reproducible experimentation
+  - [ ] Add misreporting for individual agents
+  - [ ] Add Differentially Private bid elicitation with input perturbation
 - [ ] Port Two-Player Auction Learner to finished backend
 
 ### Backend
 - [x] Implement integer support for libprio
 - [x] Implement fixed-point support for libprio
 - [x] Implement secure distributed noise generator with secure aggregation ([code](https://github.com/degregat/prio-dp))
-- [ ] Integrate distributed noise generator with federated learning framework
+- [ ] Production version of backend
+  - [ ] distributed discrete gaussian
+- [ ] Integrate secure aggregation with distributed noise generator and mechanism learner
