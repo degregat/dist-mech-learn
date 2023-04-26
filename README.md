@@ -66,7 +66,7 @@ Re-implement the backend based on [libprio-rs](https://github.com/divviup/libpri
 ### Mechanism Leaner
 - [x] Implement prototype of [Prior-Free Auction Learner](https://github.com/degregat/one-shot-approx-auctions)
 - [x] Analysis of prototype, regarding approximate IC ([arXiv](https://arxiv.org/abs/2104.00159)) ([ICLR DPML Workshop](https://dp-ml.github.io/2021-workshop-ICLR/files/27.pdf))
-- [x] Implement [Two-Player Auction Learning in JAX](https://github.com/degregat/two-player-auctions) for more efficient experimentation in the prior independent case
+- [x] Implement [Two-Player Auction Learning in JAX](https://github.com/degregat/two-player-auctions) ([intro blogpost](https://iclr-blog-track.github.io/2022/03/25/two-player-auction-learning/)) for more efficient experimentation in the prior independent case.
   - [ ] Add [Sacred](https://github.com/IDSIA/sacred) support for reproducible experimentation
   - [ ] Add misreporting for individual agents
   - [ ] Add Differentially Private bid elicitation with input perturbation
