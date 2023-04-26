@@ -59,8 +59,7 @@ To implement the above secure aggregation backend with distributed noise generat
 We use Googles implementations of [discrete gaussian noise](https://github.com/google/differential-privacy) to generate the noise on the servers.
 
 ### Next Step: Move Backend Prototype closer to Production Quality
-Re-implement the backend based on [libprio-rs](https://github.com/divviup/libprio-rs) and [OpenDP](https://github.com/opendp/opendp). A more flexible proof system will enable [tighter bounds](https://github.com/degregat/prio-dp#range-proofs) for the range proofs. Using a single language (rust) will make it easier to maintain.
-
+An effort to implement a production version of the the backend is currently under way with the [dpsa project](https://github.com/dpsa-project/overview).
 
 ## Roadmap
 ### Mechanism Leaner
@@ -77,5 +76,4 @@ Re-implement the backend based on [libprio-rs](https://github.com/divviup/libpri
 - [x] Implement fixed-point support for libprio
 - [x] Implement secure distributed noise generator with secure aggregation ([code](https://github.com/degregat/prio-dp))
 - [ ] Production version of backend
-  - [ ] distributed discrete gaussian
-- [ ] Integrate secure aggregation with distributed noise generator and mechanism learner
+  - See [roadmap](https://github.com/dpsa-project/overview#roadmap) over at dpsa project.
